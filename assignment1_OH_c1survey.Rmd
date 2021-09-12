@@ -1,0 +1,153 @@
+---
+title: "assignment1_OH"
+author: "Odalis Hernandez"
+date: "9/2/2021"
+output: html_document
+---
+
+```{r warning=FALSE}
+#1) reading in class 1 survey from gethub
+library(readr)
+ c1survey<-read_csv(
+    "https://raw.githubusercontent.com/kijohnson/ADA-Fall-2021/master/Class%201%20Survey%20Fall%202021.csv"
+  )
+```
+
+
+ 2a.) the number of observations (i.e. the number of people who filled out the survey)
+ b. the number of variables in the dataframe.
+
+```{r}
+#2a) 
+dim(c1survey) #28 observations, 27 variables (including ID)
+```
+
+
+3. a. Rename the column variables to something shorter and that is descriptive of what the variable is about (for example like_dogs for the ‘Do you like dogs?’ question variable) and b. Display that they are renamed.
+```{r message = FALSE, warning=FALSE}
+summary(c1survey)
+#data cleaning, shortening
+library(dplyr)
+#3a: rename the column variables to something shorter and that is descriptive of what the variable is about
+c1survey.clean<-c1survey%>%
+rename(like_cats='Do you like cats?')%>%
+rename(like_dogs='Do you like dogs?')%>%
+rename(des_island='If you were stranded on a desert island, what is the one item you want to have with you?')%>%
+rename(life_slogan='If you were to create a slogan for your life, what would the slogan be? (Examples: "Eat, drink, and be merry, for tomorrow, we all die." "Bite off more than you can chew." "There are far better things ahead than any we leave behind.")')%>%
+rename(fav_day='What is your favorite day of the week?')%>%
+rename(bird_type='Are you a lark, an owl, or a hummingbird?')%>%
+rename(fav_food='What is your favorite food?')%>%
+rename(fav_drink='What is your favorite drink?')%>%
+rename(fav_season='What is your favorite season?')%>%
+rename(fav_month='What is your favorite Month?')%>%
+rename(hobby='What is one hobby that you enjoy?')%>%
+rename(dgr_prgrm='What is your degree program?')%>%
+rename(spec_prim='What is your primary specialization?')%>%
+rename(stat_prim='What is your primary statistical software?')%>%
+rename(r_level='What is your level of R experience (1=None, 5=Advanced)?')%>%
+rename(comf_code='How comfortable are you with coding?')%>%
+rename(long_code='How long have you been coding (in years or months)?')%>%
+rename(hope_learn3='What are three things you hope to learn in this course?' )%>%
+rename(hlth_intrst='What is your major public health area of interest (e.g. cancer, heart disease, maternal child health, disparities, etc.)?')%>%
+rename(fav_nmbr='What is your favorite number?')%>%
+rename(brth_dy='What is your birth day (e.g. October 28-report 28)?')%>%
+    mutate(brth_dy=as.numeric(brth_dy))%>%
+rename(brth_mnth='What is your birth month (e.g. October 28-report 10)?')%>%
+    mutate(brth_mnth=as.numeric(brth_mnth))%>%
+rename(hm_cntry='What is your home country?')%>%
+rename(hm_st='What is your home state?')%>%
+rename(hm_cty='What is your home city?')%>%
+rename(high_edu='What is your highest education level?')
+  
+#3b)
+summary(c1survey.clean) #new, cleaned variables
+
+
+```
+4. Write code to determine and display the number of factor, integer, numerical, and character variables there are in the C1survey dataset.
+```{r}
+#4)
+sapply(c1survey.clean, class)
+table(sapply(c1survey.clean, class))
+
+#23 variables that are character, 4 numeric types
+```
+5. a. Using code, check the bday and bmonth variables for any unusual or missing values. 
+If you find any, b. describe what you will do with the unusual values in a comment before or immediately following the code that does it, and c. after you have cleaned up any unusual values, find the median bday and month. 
+```{r}
+#5a)
+summary(c1survey.clean$brth_dy) #1 na- max value is 29 which indicates no one was born the 30th or 31st
+summary(c1survey.clean$brth_mnth) #2 na's- min value is 1 and max value is 12; values include birth months from Jan to Dec
+
+#5b)if I noticed there max in brth_day was 30 or 31, I would use the which function to determine if any "31" or "30" values were in February (2). For stat analysis, drop.na
+
+#5c)
+#median birth date: 16
+#median birth month: 7.5
+```
+6. a. Create a new variable called bseason that gives the season according to Northern Meteorological season in which respondents were born (winter=12/1 to 2/29, spring=3/1 to 5/31, summer=6/1 to 8/31, fall=9/1 to 11/30). b. Using the table function, print a table of Seasons in the columns and bmonths in the rows that allows you to check that the coding is correct c. Sum the columns using the addmargins function to answer the question of how many classmates were born in each season? Include your answer in the code you turn in.
+```{r  message = FALSE, pressure, echo=FALSE, warning=FALSE}
+library(tidyverse)
+
+#creating the season distinctions
+spring<-seq(as.Date("3/1","%m/%d"), as.Date("5/31","%m/%d"), by="days")
+summer<-seq(as.Date("6/1","%m/%d"), as.Date("8/31","%m/%d"), by="days")
+fall<-seq(as.Date("9/1","%m/%d"), as.Date("11/30","%m/%d"), by="days")
+
+#adding a bseason column in data frame  
+c1survey.clean<-c1survey.clean%>%
+drop_na(brth_dy)%>%
+drop_na(brth_mnth)%>%
+unite("birthday", brth_mnth:brth_dy, sep= "/",  #combine the date and month to a "birthday" to compare to season list
+        remove = FALSE)%>%
+mutate(birthday=as.Date(birthday, "%m/%d"))%>%
+#6a) adding bseason column based on seaseons 
+add_column(bseason=
+             if_else(.$birthday %in% spring, 1,
+                     if_else(.$birthday %in% summer, 2,
+                       if_else(.$birthday %in% fall, 3, 4))),
+             .after="brth_mnth")%>%
+#changing levels to season names
+mutate(bseason = recode_factor(.x=bseason,
+                                 `1`="Spring",
+                                 `2`="Summer",
+                                 `3`="Fall",
+                                 `4`="Winter"))
+#6b)
+season_bday<-table(c1survey.clean$brth_mnth, c1survey.clean$bseason)
+season_bday
+addmargins(season_bday) 
+#6c) Winter: 6, Spring:4, Summer:6, Fall:9. 
+
+```
+
+7. Pick your favorite variable to analyze, come up with a question you want to answer with that variable, generate the code, and provide an answer to your question. Describe what you did using comments (i.e. #’s).
+
+```{r}
+#is there a significant association between birth day and favorite number?
+#H0=There is no significant association between numerical day of birth and favorite number
+#H1=There is a significant association between numerical day of birth and favorite number
+
+bdy.num<-lm(brth_dy~ fav_nmbr,
+            data = c1survey.clean)
+summary(bdy.num)
+cor.test(x=c1survey.clean$brth_dy,y=c1survey.clean$fav_nmbr, method="spearman") #correlation test between 2 discrete variables using spearman
+
+#pvalue=.188, R^2=.0.0004887. Correlation coefficient was not significant. We have reason to maintain the null hypothesis that there is no significant association between numerical day of birth and favorite number
+```
+
+```{r}
+#Assumptions:
+#1) shapiro-wilk test of normality. Both pass
+shapiro.test(c1survey.clean$brth_dy) #p<.05, significant so reject. It is normal
+shapiro.test(c1survey.clean$fav_nmbr) #p<.05, significant so reject. It is normal
+
+#2)linearity
+c1survey.clean%>%
+ggplot(aes(x =brth_dy, y=fav_nmbr))+
+  geom_point()+
+  geom_smooth(method = lm, se = FALSE, aes(color = "linear"))
+
+#3)Independence of observations. Each entry is a different independent student
+```
+
